@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>輕鬆尋寶小遊戲</title>
+  <style>
+    :root {
+      --bg: #121826;
+      --panel: #1c253b;
+      --tile: #263352;
+      --tile-hover: #32436b;
+      --accent: #fbbf24;
+      --text: #f1f5f9;
+      --muted: #94a3b8;
+      --success: #34d399;
+      --danger: #f87171;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans TC", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+    }
+
+    .game-container {
+      background: var(--panel);
+      border-radius: 16px;
+      padding: 24px;
+      max-width: 520px;
+      width: 100%;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.35);
+    }
+
+    h1 {
+      font-size: 1.6rem;
+      margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .subtitle {
+      color: var(--muted);
+      font-size: 0.92rem;
+      margin-bottom: 18px;
+      line-height: 1.5;
+    }
+
+    .status-bar {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+
+    .stat-box {
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 10px;
+      padding: 10px 12px;
+      text-align: center;
+    }
+
+    .stat-label {
+      font-size: 0.78rem;
+      color: var(--muted);
+      margin-bottom: 4px;
+    }
+
+    .stat-value {
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: var(--accent);
+    }
+
+    .hint-box {
+      background: rgba(251, 191, 36, 0.12);
+      border: 1px solid rgba(251, 191, 36, 0.35);
+      border-radius: 10px;
+      padding: 12px 14px;
+      margin-bottom: 16px;
+      font-size: 0.95rem;
+      min-height: 46px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .hint-box.win {
+      background: rgba(52, 211, 153, 0.14);
+      border-color: rgba(52, 211, 153, 0.45);
+      color: var(--success);
+    }
+
+    .hint-box.lose {
+      background: rgba(248, 113, 113, 0.14);
+      border-color: rgba(248, 113, 113, 0.45);
+      color: var(--danger);
+    }
+
+    .board {
+      display: grid;
+      grid-template-columns: repeat(10, 1fr);
+      gap: 6px;
+      margin-bottom: 18px;
+      user-select: none;
+    }
+
+    .tile {
+      aspect-ratio: 1 / 1;
+      background: var(--tile);
+      border: none;
+      border-radius: 8px;
+      color: var(--text);
+      font-size: 1.15rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: transform 0.12s ease, background 0.15s ease;
+    }
+
+    .tile:hover:not(:disabled) {
+      background: var(--tile-hover);
+      transform: scale(1.05);
+    }
+
+    .tile.revealed {
+      background: #1a2236;
+      color: var(--muted);
+      font-size: 0.85rem;
+      cursor: default;
+    }
+
+    .tile.treasure {
+      background: rgba(251, 191, 36, 0.25);
+      border: 1px solid var(--accent);
+      color: var(--accent);
+      font-size: 1.25rem;
+    }
+
+    .controls {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .legend {
+      font-size: 0.82rem;
+      color: var(--muted);
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    button.restart-btn {
+      background: var(--accent);
+      color: #111827;
+      border: none;
+      border-radius: 10px;
+      padding: 10px 18px;
+      font-size: 0.95rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: opacity 0.15s ease;
+    }
+
+    button.restart-btn:hover {
+      opacity: 0.9;
+    }
+  </style>
+</head>
+<body>
+  <div class="game-container">
+    <h1>🗺️ 輕鬆尋寶小遊戲</h1>
+    <p class="subtitle">
+      點擊格子挖掘寶藏！地圖裡藏了 <strong>3 個寶藏</strong>，只要在步數用完前找到 <strong>1 個</strong> 就算通關，找齊全部更厲害！
+    </p>
+
+    <div class="status-bar">
+      <div class="stat-box">
+        <div class="stat-label">剩餘步數</div>
+        <div class="stat-value" id="moves-left">30</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-label">已尋獲寶藏</div>
+        <div class="stat-value" id="treasures-found">0 / 3</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-label">目前得分</div>
+        <div class="stat-value" id="score">0</div>
+      </div>
+    </div>
+
+    <div class="hint-box" id="hint-box">
+      <span id="hint-text">💡 點擊任一格子開始尋寶，格子上的數字代表距離最近寶藏的步數（上下左右）。</span>
+    </div>
+
+    <div class="board" id="board" aria-label="尋寶地圖"></div>
+
+    <div class="controls">
+      <div class="legend">
+        <span>💎 寶藏（+100分）</span>
+        <span>數字：到最近寶藏距離</span>
+      </div>
+      <button class="restart-btn" id="restart-btn">重新開始</button>
+    </div>
+  </div>
+
+  <script>
+    const GRID_SIZE = 10;
+    const TOTAL_TREASURES = 3;
+    const MAX_MOVES = 30;
+
+    let treasures = [];      // 儲存寶藏座標 { r, c, found }
+    let revealed = [];       // 記錄哪些格子已翻開
+    let movesLeft = MAX_MOVES;
+    let score = 0;
+    let gameOver = false;
+
+    const boardEl = document.getElementById("board");
+    const movesLeftEl = document.getElementById("moves-left");
+    const treasuresFoundEl = document.getElementById("treasures-found");
+    const scoreEl = document.getElementById("score");
+    const hintBoxEl = document.getElementById("hint-box");
+    const hintTextEl = document.getElementById("hint-text");
+    const restartBtn = document.getElementById("restart-btn");
+
+    // 計算曼哈頓距離（上下左右格數）
+    function manhattanDistance(r1, c1, r2, c2) {
+      return Math.abs(r1 - r2) + Math.abs(c1 - c2);
+    }
+
+    // 找出距離某格最近的「尚未找到」的寶藏距離
+    function getNearestTreasureDistance(r, c) {
+      const remaining = treasures.filter(t => !t.found);
+      if (remaining.length === 0) return 0;
+      return Math.min(...remaining.map(t => manhattanDistance(r, c, t.r, t.c)));
+    }
+
+    function getTemperatureHint(dist) {
+      if (dist === 1) return "🔥 就在旁邊（距離 1 格）！";
+      if (dist === 2) return "♨️ 非常接近了（距離 2 格）！";
+      if (dist <= 4) return `🌤️ 漸漸靠近囉（距離 ${dist} 格）。`;
+      return `❄️ 還有點遠（距離 ${dist} 格），換個方向試試。`;
+    }
+
+    function initGame() {
+      treasures = [];
+      revealed = Array.from({ length: GRID_SIZE }, () => Array(GRID_SIZE).fill(false));
+      movesLeft = MAX_MOVES;
+      score = 0;
+      gameOver = false;
+
+      // 隨機放置 3 個不重複的寶藏
+      const usedKeys = new Set();
+      while (treasures.length < TOTAL_TREASURES) {
+        const r = Math.floor(Math.random() * GRID_SIZE);
+        const c = Math.floor(Math.random() * GRID_SIZE);
+        const key = `${r},${c}`;
+        if (!usedKeys.has(key)) {
+          usedKeys.add(key);
+          treasures.push({ r, c, found: false });
+        }
+      }
+
+      hintBoxEl.className = "hint-box";
+      hintTextEl.textContent = "💡 點擊任一格子開始尋寶，格子上的數字代表距離最近寶藏的步數（上下左右）。";
+      updateUI();
+      renderBoard();
+    }
+
+    function updateUI() {
+      const foundCount = treasures.filter(t => t.found).length;
+      movesLeftEl.textContent = movesLeft;
+      treasuresFoundEl.textContent = `${foundCount} / ${TOTAL_TREASURES}`;
+      scoreEl.textContent = score;
+    }
+
+    function revealAllTreasures() {
+      treasures.forEach(t => {
+        const idx = t.r * GRID_SIZE + t.c;
+        const tile = boardEl.children[idx];
+        if (tile) {
+          tile.classList.add("revealed", "treasure");
+          tile.textContent = "💎";
+        }
+      });
+    }
+
+    function handleTileClick(r, c, tileEl) {
+      if (gameOver || revealed[r][c]) return;
+
+      revealed[r][c] = true;
+      movesLeft--;
+      tileEl.classList.add("revealed");
+
+      const hitTreasure = treasures.find(t => !t.found && t.r === r && t.c === c);
+
+      if (hitTreasure) {
+        hitTreasure.found = true;
+        score += 100 + movesLeft * 2; // 剩餘步數越多加分越多
+        tileEl.classList.add("treasure");
+        tileEl.textContent = "💎";
+
+        const foundCount = treasures.filter(t => t.found).length;
+        if (foundCount === TOTAL_TREASURES) {
+          gameOver = true;
+          hintBoxEl.className = "hint-box win";
+          hintTextEl.textContent = `🎉 太神啦！3 個寶藏全部找齊，最終得分 ${score} 分！`;
+        } else {
+          const nextDist = getNearestTreasureDistance(r, c);
+          hintBoxEl.className = "hint-box win";
+          hintTextEl.textContent = `✨ 找到第 ${foundCount} 個寶藏！${getTemperatureHint(nextDist)}`;
+        }
+      } else {
+        const dist = getNearestTreasureDistance(r, c);
+        tileEl.textContent = dist;
+        hintBoxEl.className = "hint-box";
+        hintTextEl.textContent = getTemperatureHint(dist);
+      }
+
+      const foundCount = treasures.filter(t => t.found).length;
+
+      // 步數用完時的結算：只要找到至少 1 個就算通關
+      if (!gameOver && movesLeft <= 0) {
+        gameOver = true;
+        revealAllTreasures();
+        if (foundCount >= 1) {
+          hintBoxEl.className = "hint-box win";
+          hintTextEl.textContent = `🏆 步數用完，但你成功找到了 ${foundCount} 個寶藏（得分 ${score} 分），挑戰成功！`;
+        } else {
+          hintBoxEl.className = "hint-box lose";
+          hintTextEl.textContent = "😅 步數用完了，這次沒挖到寶藏！已為你標出寶藏位置，再來一局吧！";
+        }
+      }
+
+      updateUI();
+    }
+
+    function renderBoard() {
+      boardEl.innerHTML = "";
+      for (let r = 0; r < GRID_SIZE; r++) {
+        for (let c = 0; c < GRID_SIZE; c++) {
+          const btn = document.createElement("button");
+          btn.className = "tile";
+          btn.type = "button";
+          btn.setAttribute("aria-label", `第 ${r + 1} 列第 ${c + 1} 格`);
+          btn.addEventListener("click", () => handleTileClick(r, c, btn));
+          boardEl.appendChild(btn);
+        }
+      }
+    }
+
+    restartBtn.addEventListener("click", initGame);
+
+    // 啟動遊戲
+    initGame();
+  </script>
+</body>
+</html>
